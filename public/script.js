@@ -1,8 +1,8 @@
 // --- Configuration ---
 const minFreq = 550;
 const maxFreq = 2500;
-const tuningRange = 80; 
-const staticMaxVolume = 0.5; 
+const tuningRange = 80;
+const staticMaxVolume = 0.5;
 
 // --- DOM Elements ---
 const tuningKnob = document.getElementById('tuning-knob');
@@ -55,21 +55,21 @@ let audioCtx = null;
 function playClickSound() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    
+
     // Create a sharp "thwack" sound
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
-    
+
     osc.type = 'square';
     osc.frequency.setValueAtTime(150, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.05);
-    
+
     gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-    
+
     osc.connect(gainNode);
     gainNode.connect(audioCtx.destination);
-    
+
     osc.start();
     osc.stop(audioCtx.currentTime + 0.05);
 }
@@ -82,41 +82,47 @@ function updateLightFlicker() {
         return;
     }
     document.body.classList.add('power-on');
-    
+
     let maxSignal = 0;
     let shortest = tuningRange;
     const currentFreq = parseInt(tuningKnob.value);
-    
+
     stations.forEach(station => {
         const distance = Math.abs(currentFreq - station.frequency);
         if (distance < shortest) shortest = distance;
     });
-    
+
     if (shortest < tuningRange) {
         maxSignal = 1 - (shortest / tuningRange);
     }
-    
+
     // Core baseline brightness scales with signal lock (0.6 minimum ambient glow)
-    const baseLight = 0.5 + (maxSignal * 0.5); 
+    const baseLight = 0.5 + (maxSignal * 0.5);
     // Jitter scales wildly in the 'static zone'
-    const jitterAmount = (1 - maxSignal) * 0.45; 
-    
+    const jitterAmount = (1 - maxSignal) * 0.45;
+
     const randomJitter = (Math.random() * jitterAmount) - (jitterAmount / 2);
     const finalIntensity = Math.max(0.15, Math.min(1.0, baseLight + randomJitter));
-    
+
     document.documentElement.style.setProperty('--light-intensity', finalIntensity.toFixed(3));
-    
+
     updateLightFrame = requestAnimationFrame(updateLightFlicker);
 }
 
 powerSwitch.addEventListener('click', () => {
     playClickSound();
     isPoweredOn = !isPoweredOn;
-    
+
     if (isPoweredOn) {
         radioContainer.classList.add('power-on');
         updateLightFrame = requestAnimationFrame(updateLightFlicker);
         if (!hasInteracted) {
+            // Jump instantly to a completely random live station on the first power-on
+            if (stations.length > 0) {
+                const randomStation = stations[Math.floor(Math.random() * stations.length)];
+                tuningKnob.value = randomStation.frequency;
+                tuningKnob.dispatchEvent(new Event('input')); 
+            }
             startAudioEngine();
         } else {
             updateAudio(parseInt(tuningKnob.value));
@@ -125,51 +131,51 @@ powerSwitch.addEventListener('click', () => {
         radioContainer.classList.remove('power-on');
         cancelAnimationFrame(updateLightFrame);
         document.body.classList.remove('power-on');
-        updateAudio(parseInt(tuningKnob.value)); 
+        updateAudio(parseInt(tuningKnob.value));
     }
 });
 
 function startAudioEngine() {
     hasInteracted = true;
     staticAudio.play().catch(e => console.log("Static playback blocked:", e));
-    
+
     stations.forEach(station => {
         if (station.files && station.files.length > 0) {
             const audioEl = new Audio();
             audioEl.volume = 0;
-            audioEl.preload = 'auto'; 
-            document.body.appendChild(audioEl); 
+            audioEl.preload = 'auto';
+            document.body.appendChild(audioEl);
             stationAudioElements[station.id] = audioEl;
-            
+
             let lastShow = null;
-            
+
             // Queue engine to evenly distribute playback across subfolders
             const queueNextTrack = () => {
                 // Get all unique shows, excluding the last one to prevent identical repeats
                 let availableShows = [...new Set(station.files.map(f => f.show))].filter(s => s !== lastShow);
-                
+
                 if (availableShows.length === 0) {
                     availableShows = [...new Set(station.files.map(f => f.show))];
                 }
-                
+
                 if (availableShows.length > 0) {
                     // Pick a random show folder uniquely
                     const pickedShow = availableShows[Math.floor(Math.random() * availableShows.length)];
                     lastShow = pickedShow;
-                    
+
                     // Filter files for that exact show and pick a completely random track
                     const showFiles = station.files.filter(f => f.show === pickedShow);
                     const picked = showFiles[Math.floor(Math.random() * showFiles.length)];
-                    
+
                     const displayName = picked.show === 'root' ? station.name : picked.show;
                     audioEl.dataset.currentTrack = displayName.replace(/[-_]/g, ' ').toUpperCase();
-                    
+
                     const encodedPath = picked.file.split('/').map(p => encodeURIComponent(p)).join('/');
                     audioEl.src = `${API_BASE_URL}/audio/${encodeURIComponent(station.folderName)}/${encodedPath}`;
                     audioEl.play().catch(e => console.log(`Playback of ${station.name} blocked:`, e));
                 }
             };
-            
+
             audioEl.addEventListener('ended', queueNextTrack);
             audioEl.addEventListener('error', queueNextTrack);
 
@@ -186,9 +192,9 @@ const adjustTuning = (amount) => {
     let newVal = currentVal + amount;
     if (newVal < minFreq) newVal = minFreq;
     if (newVal > maxFreq) newVal = maxFreq;
-    
+
     tuningKnob.value = newVal;
-    tuningKnob.dispatchEvent(new Event('input')); 
+    tuningKnob.dispatchEvent(new Event('input'));
 };
 
 tuneDownBtn.addEventListener('click', () => adjustTuning(-1));
@@ -212,11 +218,11 @@ volumeKnob.addEventListener('input', (e) => {
 
 tuningKnob.addEventListener('input', (e) => {
     const freq = parseInt(e.target.value);
-    
+
     freqReadout.textContent = freq;
 
     const percent = ((freq - minFreq) / (maxFreq - minFreq));
-    const rotateDeg = (percent * 270) - 135; 
+    const rotateDeg = (percent * 270) - 135;
     dialImage.style.transform = `rotate(${rotateDeg}deg)`;
 
     if (hasInteracted) {
@@ -236,7 +242,7 @@ function updateAudio(currentFreq) {
         metadataRibbon.classList.add('off');
         return;
     }
-    
+
     metadataRibbon.classList.remove('off');
 
     let activeStation = null;
@@ -258,10 +264,10 @@ function updateAudio(currentFreq) {
 
     if (activeStation && stationAudioElements[activeStation.id]) {
         const signalStrength = 1 - (shortestDistance / tuningRange);
-        
-        stationAudioElements[activeStation.id].volume = Math.pow(signalStrength, 2) * smoothedVol; 
+
+        stationAudioElements[activeStation.id].volume = Math.pow(signalStrength, 2) * smoothedVol;
         staticAudio.volume = (1 - signalStrength) * staticMaxVolume * smoothedVol;
-        
+
         if (signalStrength > 0.7) {
             tunedIndicator.classList.add('active');
             metadataRibbon.textContent = stationAudioElements[activeStation.id].dataset.currentTrack || "BROADCASTING";
@@ -286,12 +292,12 @@ presetBtns.forEach(btn => {
     const slot = btn.dataset.slot;
 
     let pressTimer;
-    
+
     const savePreset = () => {
         const freqToSave = tuningKnob.value;
         runtimePresets[slot] = freqToSave;
         btn.classList.add('saved');
-        
+
         freqReadout.style.color = '#fff';
         freqReadout.style.textShadow = '0 0 20px #fff';
         setTimeout(() => {
