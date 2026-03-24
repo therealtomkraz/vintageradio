@@ -19,6 +19,15 @@ const tuneUpBtn = document.getElementById('tune-up');
 const powerSwitch = document.getElementById('power-switch');
 const radioContainer = document.querySelector('.radio-container');
 const clearPresetsBtn = document.getElementById('clear-presets');
+const sleepKnob = document.getElementById('sleep-knob');
+const sleepLabel = document.getElementById('sleep-label');
+
+// Add Sleep Globals
+const sleepOptions = [0, 15, 30, 60];
+let sleepStateIdx = 0;
+let sleepEndTime = 0;
+let sleepInterval = null;
+let sleepAttenuation = 1.0;
 
 // Dynamically target the host IP so LAN devices like phones can connect
 const API_BASE_URL = `http://${window.location.hostname}:3000`;
@@ -54,24 +63,27 @@ async function initRadio() {
 let audioCtx = null;
 function playClickSound() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-
-    // Create a sharp "thwack" sound
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
-
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.05);
-
-    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-
+    
+    // Deep, pleasant mechanical click with Triangle wave mapping
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.1);
+    
+    // Smooth 10ms envelope attack removes the harsh digital pop
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+    
     osc.connect(gainNode);
     gainNode.connect(audioCtx.destination);
-
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.05);
+    
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.12);
 }
 
 // --- Ambient Lighting Engine ---
@@ -260,7 +272,7 @@ function updateAudio(currentFreq) {
         audio.volume = 0;
     });
 
-    const smoothedVol = Math.pow(masterVolume, 2);
+    const smoothedVol = Math.pow(masterVolume, 2) * sleepAttenuation;
 
     if (activeStation && stationAudioElements[activeStation.id]) {
         const signalStrength = 1 - (shortestDistance / tuningRange);
@@ -350,5 +362,50 @@ if (clearPresetsBtn) {
         presetBtns.forEach(btn => btn.classList.remove('saved'));
     });
 }
+// --- Sleep Timer Engine ---
+sleepKnob.addEventListener('click', () => {
+    playClickSound(); // Make mechanical tick
+    sleepStateIdx = (sleepStateIdx + 1) % sleepOptions.length;
+    
+    sleepKnob.className = `sleep-knob sleep-pos-${sleepStateIdx}`;
+    
+    const mins = sleepOptions[sleepStateIdx];
+    if (mins === 0) {
+        sleepLabel.textContent = "SLEEP: OFF";
+        clearInterval(sleepInterval);
+        sleepAttenuation = 1.0;
+        updateAudio(parseInt(tuningKnob.value));
+    } else {
+        sleepLabel.textContent = `SLEEP: ${mins}M`;
+        sleepEndTime = Date.now() + (mins * 60 * 1000);
+        
+        clearInterval(sleepInterval);
+        sleepInterval = setInterval(() => {
+            if (!isPoweredOn) {
+                clearInterval(sleepInterval);
+                return;
+            }
+            
+            const remainingMs = sleepEndTime - Date.now();
+            if (remainingMs <= 0) {
+                // Time up! Pull the plug.
+                clearInterval(sleepInterval);
+                sleepAttenuation = 1.0; 
+                if (isPoweredOn) powerSwitch.click(); // Trigger strict hardware physics shutdown
+                
+                // Reset internal visuals
+                sleepStateIdx = 0;
+                sleepKnob.className = `sleep-knob sleep-pos-0`;
+                sleepLabel.textContent = "SLEEP: OFF";
+            } else if (remainingMs < 60000) {
+                // Final 60 seconds analog graceful drop
+                sleepAttenuation = remainingMs / 60000;
+                updateAudio(parseInt(tuningKnob.value));
+            } else {
+                sleepAttenuation = 1.0;
+            }
+        }, 1000);
+    }
+});
 
 initRadio();
