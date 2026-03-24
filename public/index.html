@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skeuomorphic Vintage Radio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Ambient wall glow that flickers dynamically -->
+    <div id="ambient-spotlight"></div>
+    
+    <!-- Realistic table surface horizon -->
+    <div class="wooden-desk"></div>
+
+    <div class="radio-container">
+        
+        <!-- Beautiful Decorative Grill -->
+        <div class="speaker-grill"></div>
+        
+        <!-- Turning Dial Core -->
+        <div class="dial-section">
+            <div class="frequency-indicator">
+                <button class="fine-tune-btn" id="tune-down">◀</button>
+                <div class="freq-text-group">
+                    <span id="freq-readout">550</span> <span class="unit">kHz</span>
+                    <span id="tuned-indicator">T</span>
+                </div>
+                <button class="fine-tune-btn" id="tune-up">▶</button>
+            </div>
+            
+            <div class="dial-wrapper">
+                <div id="css-dial">
+                    <div class="dial-ridge"></div>
+                    <div class="dial-center">
+                        <div class="dial-pointer"></div>
+                    </div>
+                </div>
+                <!-- Native access layer -->
+                <input type="range" id="tuning-knob" min="550" max="2500" value="550">
+            </div>
+        </div>
+
+        <div class="metadata-container">
+            <div id="metadata-ribbon" class="dymo-label off">POWER OFF</div>
+        </div>
+
+        <!-- Utility row -->
+        <div class="lower-controls">
+            
+            <div class="power-section">
+                <button id="power-switch">I/O</button>
+            </div>
+
+            <div class="volume-section">
+                <label>VOL</label>
+                <div class="vol-dial-wrapper">
+                    <div id="css-vol-dial">
+                        <div class="vol-pointer"></div>
+                    </div>
+                    <input type="range" id="volume-knob" min="0" max="1" step="0.001" value="0.33">
+                </div>
+            </div>
+
+            <div class="presets-section">
+                <div class="presets">
+                    <button class="preset-btn" data-slot="1">1</button>
+                    <button class="preset-btn" data-slot="2">2</button>
+                    <button class="preset-btn" data-slot="3">3</button>
+                    <button class="preset-btn" data-slot="4">4</button>
+                    <button class="preset-btn" data-slot="5">5</button>
+                    <button class="action-btn clear-btn" id="clear-presets">CLR</button>
+                </div>
+                <div class="preset-hint">Hold to Save</div>
+            </div>
+
+        </div>
+
+        <audio id="static-noise" loop src="static.mp3"></audio>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

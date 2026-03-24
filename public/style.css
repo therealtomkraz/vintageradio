@@ -1,0 +1,437 @@
+/* Core colors */
+:root {
+    --wood-dark: #2a1610;
+    --wood-mid: #4a2511;
+    --wood-light: #703a1a;
+    --brass-dark: #8a6d1c;
+    --brass-cover: #b89942;
+    --brass-light: #fbd668;
+    --brass-glow: #ffee99;
+    --bakelite: #181818;
+    --glow: #ff8c00;
+}
+
+body {
+    background-color: #050302;
+    background-image: repeating-linear-gradient(45deg, #0e0906 0px, #0e0906 2px, #080503 2px, #080503 6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    user-select: none;
+}
+
+#ambient-spotlight {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100vw;
+    height: 100vh;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 50% 40%, rgba(240, 160, 50, 0.4) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -2;
+    opacity: 0; 
+}
+body.power-on #ambient-spotlight {
+    opacity: var(--light-intensity, 1);
+}
+
+.wooden-desk {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 16vh;
+    background: linear-gradient(to bottom, #110905 0%, #050201 100%);
+    border-top: 3px solid #20120a;
+    box-shadow: 0 -20px 40px rgba(0,0,0,0.95);
+    z-index: -1;
+}
+
+.radio-container {
+    width: 440px;
+    height: 640px;
+    background: 
+        linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.7)),
+        repeating-linear-gradient(90deg, var(--wood-mid) 0px, var(--wood-dark) 4px, var(--wood-mid) 8px);
+    padding: 30px;
+    border-radius: 60px 60px 15px 15px;
+    box-shadow: 
+        0 40px 60px rgba(0,0,0,0.95), 
+        inset 0 4px 10px rgba(255,255,255,0.15),
+        inset 0 -10px 30px rgba(0,0,0,0.9);
+    border: 6px solid #100804;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    transition: box-shadow 0.2s;
+    margin-top: 3vh;
+    -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 86%, rgba(255,255,255,0.15));
+}
+
+/* Beautiful Speaker Grill */
+.speaker-grill {
+    width: 85%;
+    height: 140px;
+    background: 
+        repeating-linear-gradient(0deg, transparent 0px, transparent 4px, #111 4px, #111 8px),
+        repeating-linear-gradient(90deg, #222 0px, #222 4px, #111 4px, #111 8px);
+    background-color: #1a1a1a;
+    border-radius: 20px 20px 8px 8px;
+    border: 4px solid var(--brass-cover);
+    box-shadow: 
+        inset 0 10px 30px rgba(0,0,0,0.9),
+        0 4px 8px rgba(0,0,0,0.8);
+    margin-bottom: 25px;
+}
+
+.dial-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(0,0,0,0.5);
+    padding: 25px 30px;
+    border-radius: 30px;
+    box-shadow: inset 0 4px 20px rgba(0,0,0,0.9), 0 2px 5px rgba(255,255,255,0.05);
+    border: 2px solid #1a1a1a;
+    width: 250px;
+    margin-bottom: 35px;
+}
+
+.frequency-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #080300;
+    border: 3px solid #000;
+    padding: 8px 15px;
+    border-radius: 6px;
+    color: #4a2200; /* OFF state */
+    font-size: 2.2rem;
+    font-weight: bold;
+    text-shadow: none; /* OFF state */
+    box-shadow: inset 0 0 15px #110500, 0 2px 4px rgba(255,255,255,0.05); /* OFF state */
+    margin-bottom: 30px;
+    transition: color 0.1s, text-shadow 0.1s, box-shadow 0.1s;
+    width: 250px;
+    text-align: center;
+    letter-spacing: 2px;
+    white-space: nowrap;
+}
+.radio-container.power-on .frequency-indicator {
+    color: var(--glow);
+    text-shadow: 0 0 12px var(--glow);
+    box-shadow: inset 0 0 15px #6b2800, 0 2px 4px rgba(255,255,255,0.1);
+}
+
+.freq-text-group {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-grow: 1;
+}
+.frequency-indicator .unit {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    letter-spacing: 0px;
+    margin-left: 6px;
+}
+#tuned-indicator {
+    font-size: 0.65rem;
+    color: #221100;
+    margin-left: 8px;
+    font-weight: 900;
+    transition: color 0.1s, text-shadow 0.1s;
+}
+.radio-container.power-on #tuned-indicator.active {
+    color: #ff3300;
+    text-shadow: 0 0 10px #ff3300, 0 0 15px rgba(255, 0, 0, 0.8);
+}
+.fine-tune-btn {
+    background: transparent;
+    border: none;
+    color: var(--brass-dark);
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 0 5px;
+    transition: all 0.1s;
+    user-select: none;
+    outline: none;
+}
+.fine-tune-btn:active {
+    color: var(--glow);
+    transform: scale(0.9);
+}
+.fine-tune-btn:hover {
+    color: var(--brass-light);
+}
+
+/* The CSS Dial mechanism */
+.dial-wrapper {
+    position: relative;
+    width: 170px;
+    height: 170px;
+}
+
+#css-dial {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--bakelite);
+    box-shadow: 
+        inset 0 6px 12px rgba(255,255,255,0.2),
+        inset 0 -6px 12px rgba(0,0,0,0.9),
+        0 15px 25px rgba(0,0,0,0.9);
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 4px solid #050505;
+}
+
+/* Ribbed edges */
+.dial-ridge {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: repeating-conic-gradient(
+        from 0deg, 
+        #3d3d3d 0deg 2deg, 
+        #0a0a0a 2deg 4deg
+    );
+    opacity: 0.6;
+    mask-image: radial-gradient(transparent 68%, black 72%);
+    -webkit-mask-image: radial-gradient(transparent 68%, black 72%);
+}
+
+.dial-center {
+    width: 65%;
+    height: 65%;
+    border-radius: 50%;
+    background: conic-gradient(
+        #3a2c0a, #4a3d1c, #5a4b2a, #3a2c0a /* OFF state */
+    );
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.8), 0 3px 10px rgba(0,0,0,0.9);
+    position: relative;
+    display: flex;
+    justify-content: center;
+    transition: background 0.2s, box-shadow 0.2s;
+}
+.radio-container.power-on .dial-center {
+    background: conic-gradient(
+        var(--brass-dark), var(--brass-glow), var(--brass-cover), var(--brass-dark)
+    );
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.6), 0 3px 10px rgba(0,0,0,0.9);
+}
+
+.dial-pointer {
+    position: absolute;
+    top: 8%;
+    width: 4px;
+    height: 35%;
+    background-color: #222;
+    border-radius: 2px;
+    box-shadow: 0 1px 1px rgba(255,255,255,0.5);
+}
+
+#tuning-knob {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0;
+    cursor: grab;
+    z-index: 10;
+    touch-action: none;
+}
+
+/* Dymo Label Metadata Ribbon */
+.metadata-container {
+    width: 90%;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: center;
+}
+.dymo-label {
+    background: linear-gradient(to bottom, #111, #000);
+    color: rgba(255,255,255,0.85); 
+    font-family: 'Courier New', Courier, monospace; 
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 6px 12px;
+    border-radius: 2px;
+    border: 1px solid #000;
+    box-shadow: 
+        inset 0 1px 1px rgba(255,255,255,0.15), 
+        inset 0 -1px 2px rgba(0,0,0,0.8),
+        0 4px 6px rgba(0,0,0,0.9);
+    position: relative;
+    clip-path: polygon(1% 0, 99% 0, 100% 10%, 100% 90%, 99% 100%, 1% 100%, 0 90%, 0 10%); 
+    text-shadow: -1px -1px 1px rgba(0,0,0,0.8), 1px 1px 1px rgba(255,255,255,0.2);
+    min-width: 150px;
+    max-width: 90%;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transform: rotate(-1.5deg);
+}
+.dymo-label.off {
+    opacity: 0.3;
+}
+
+/* Lower Controls container */
+.lower-controls {
+    display: flex;
+    width: 98%;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.power-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+#power-switch {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #333, #111);
+    border: 3px solid #0a0a0a;
+    color: #666;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.9), inset 0 2px 3px rgba(255,255,255,0.2);
+    transition: all 0.1s;
+    outline: none;
+}
+#power-switch:active {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.9);
+    transform: translateY(4px);
+}
+.radio-container.power-on #power-switch {
+    color: var(--glow);
+    text-shadow: 0 0 8px var(--glow);
+    background: radial-gradient(circle, #442, #110);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.9), inset 0 2px 5px rgba(255, 140, 0, 0.4);
+}
+
+.volume-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+.volume-section label {
+    color: var(--brass-light);
+    font-size: 0.9rem;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    text-shadow: 1px 1px 2px #000;
+}
+.vol-dial-wrapper {
+    position: relative;
+    width: 70px;
+    height: 70px;
+}
+#css-vol-dial {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--bakelite);
+    box-shadow: inset 0 3px 6px rgba(255,255,255,0.15), 0 6px 15px rgba(0,0,0,0.8);
+    position: absolute;
+    border: 3px solid #000;
+}
+.vol-pointer {
+    position: absolute;
+    top: 15%;
+    left: 48%;
+    width: 4px;
+    height: 25%;
+    background: var(--brass-light);
+    border-radius: 2px;
+}
+#volume-knob {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0;
+    cursor: grab;
+    z-index: 10;
+    touch-action: none;
+}
+
+.presets-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+.presets {
+    display: flex;
+    gap: 6px;
+}
+.preset-btn {
+    width: 36px;
+    height: 34px;
+    background: linear-gradient(to bottom, #d5d5d5, #8a8a8a);
+    border: 2px solid #111;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 1rem;
+    color: #1a1a1a;
+    cursor: pointer;
+    box-shadow: 0 5px 8px rgba(0,0,0,0.8), inset 0 2px 2px rgba(255,255,255,0.6);
+    transition: all 0.1s;
+}
+.preset-btn:active, .preset-btn.pressing {
+    transform: translateY(4px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    background: linear-gradient(to bottom, #bbb, #666);
+}
+.preset-btn.saved {
+    background: linear-gradient(to bottom, var(--brass-light), var(--brass-dark));
+    color: #222;
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+}
+.preset-hint {
+    color: var(--brass-light);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    text-shadow: 1px 1px 2px #000;
+}
+
+/* Action Utility Rules */
+.action-btn {
+    width: 36px;
+    height: 34px;
+    border: 2px solid #111;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.85rem;
+    cursor: pointer;
+    box-shadow: 0 5px 8px rgba(0,0,0,0.8), inset 0 2px 2px rgba(255,255,255,0.4);
+    transition: all 0.1s;
+}
+.action-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.9);
+}
+.clear-btn {
+    background: linear-gradient(to bottom, #a03a3a, #5c1818);
+    color: #ffcccc;
+    font-size: 0.6rem;
+}
+.clear-btn:active {
+    background: linear-gradient(to bottom, #8a2a2a, #470d0d);
+}

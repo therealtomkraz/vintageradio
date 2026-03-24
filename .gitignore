@@ -1,0 +1,11 @@
+# Node modules
+node_modules/
+
+# Ignore massive Audio files from version control
+*.mp3
+*.m4a
+*.wav
+
+# Ignore OS metadata
+.DS_Store
+Thumbs.db
