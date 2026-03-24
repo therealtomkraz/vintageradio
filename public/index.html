@@ -49,28 +49,21 @@
         <!-- Utility row -->
         <div class="lower-controls">
             
-            <div class="power-section">
-                <div class="switch-label">I / O</div>
-                <div class="power-switch off" id="power-switch">
-                    <div class="switch-button"></div>
-                </div>
-            </div>
-
-            <!-- Sleep Timer Section -->
-            <div class="sleep-section">
-                <div class="sleep-label" id="sleep-label">SLEEP: OFF</div>
-                <div class="sleep-knob sleep-pos-0" id="sleep-knob">
-                    <div class="sleep-indicator"></div>
-                </div>
-            </div>
-
-            <div class="volume-section">
-                <label>VOL</label>
-                <div class="vol-dial-wrapper">
-                    <div id="css-vol-dial">
-                        <div class="vol-pointer"></div>
+            <div class="left-controls">
+                <div class="volume-section">
+                    <div class="vol-dial-wrapper">
+                        <div id="css-vol-dial">
+                            <div class="vol-pointer"></div>
+                        </div>
+                        <input type="range" id="volume-knob" min="0" max="1" step="0.001" value="0.33">
                     </div>
-                    <input type="range" id="volume-knob" min="0" max="1" step="0.001" value="0.33">
+                </div>
+
+                <div class="power-section">
+                    <div class="switch-label">I / O</div>
+                    <div class="power-switch off" id="power-switch">
+                        <div class="switch-button"></div>
+                    </div>
                 </div>
             </div>
 
@@ -84,6 +77,14 @@
                     <button class="action-btn clear-btn" id="clear-presets">CLR</button>
                 </div>
                 <div class="preset-hint">Hold to Save</div>
+            </div>
+
+            <!-- Sleep Timer Section -->
+            <div class="sleep-section">
+                <div class="sleep-label" id="sleep-label">SLEEP: OFF</div>
+                <div class="sleep-knob sleep-pos-0" id="sleep-knob">
+                    <div class="sleep-indicator"></div>
+                </div>
             </div>
 
         </div>

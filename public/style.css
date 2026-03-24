@@ -356,6 +356,14 @@ body.power-on #ambient-spotlight {
     align-items: flex-end;
 }
 
+.left-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    margin-bottom: -5px;
+}
+
 .power-section {
     display: flex;
     flex-direction: column;
@@ -436,7 +444,8 @@ body.power-on #ambient-spotlight {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    margin-bottom: 35px;
 }
 .presets {
     display: flex;
