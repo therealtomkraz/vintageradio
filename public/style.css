@@ -141,17 +141,6 @@ body.power-on #ambient-spotlight {
     letter-spacing: 0px;
     margin-left: 6px;
 }
-#tuned-indicator {
-    font-size: 0.65rem;
-    color: #221100;
-    margin-left: 8px;
-    font-weight: 900;
-    transition: color 0.1s, text-shadow 0.1s;
-}
-.radio-container.power-on #tuned-indicator.active {
-    color: #ff3300;
-    text-shadow: 0 0 10px #ff3300, 0 0 15px rgba(255, 0, 0, 0.8);
-}
 .fine-tune-btn {
     background: transparent;
     border: none;
@@ -300,6 +289,12 @@ body.power-on #ambient-spotlight {
     background-color: #222;
     border-radius: 2px;
     box-shadow: 0 1px 1px rgba(255,255,255,0.5);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.radio-container.power-on #tuned-indicator.active {
+    background-color: #ff3300;
+    box-shadow: 0 0 8px #ff3300, 0 0 15px rgba(255, 0, 0, 0.8), 0 1px 1px rgba(255,255,255,0.5);
 }
 
 #tuning-knob {
