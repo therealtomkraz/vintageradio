@@ -363,12 +363,10 @@ if (clearPresetsBtn) {
     });
 }
 // --- Sleep Timer Engine ---
-sleepKnob.addEventListener('click', () => {
-    playClickSound(); // Make mechanical tick
+function handleSleepToggle() {
+    playClickSound(); // Mechanical tick
     sleepStateIdx = (sleepStateIdx + 1) % sleepOptions.length;
-    
     sleepKnob.className = `sleep-knob sleep-pos-${sleepStateIdx}`;
-    
     const mins = sleepOptions[sleepStateIdx];
     if (mins === 0) {
         sleepLabel.textContent = "SLEEP: OFF";
@@ -377,28 +375,25 @@ sleepKnob.addEventListener('click', () => {
         updateAudio(parseInt(tuningKnob.value));
     } else {
         sleepLabel.textContent = `SLEEP: ${mins}M`;
-        sleepEndTime = Date.now() + (mins * 60 * 1000);
-        
+        sleepEndTime = Date.now() + mins * 60 * 1000;
         clearInterval(sleepInterval);
         sleepInterval = setInterval(() => {
             if (!isPoweredOn) {
                 clearInterval(sleepInterval);
                 return;
             }
-            
             const remainingMs = sleepEndTime - Date.now();
             if (remainingMs <= 0) {
-                // Time up! Pull the plug.
+                // Time up – shut down
                 clearInterval(sleepInterval);
-                sleepAttenuation = 1.0; 
-                if (isPoweredOn) powerSwitch.click(); // Trigger strict hardware physics shutdown
-                
-                // Reset internal visuals
+                sleepAttenuation = 1.0;
+                if (isPoweredOn) powerSwitch.click();
+                // Reset UI
                 sleepStateIdx = 0;
                 sleepKnob.className = `sleep-knob sleep-pos-0`;
                 sleepLabel.textContent = "SLEEP: OFF";
             } else if (remainingMs < 60000) {
-                // Final 60 seconds analog graceful drop
+                // Final minute fade out
                 sleepAttenuation = remainingMs / 60000;
                 updateAudio(parseInt(tuningKnob.value));
             } else {
@@ -406,6 +401,12 @@ sleepKnob.addEventListener('click', () => {
             }
         }, 1000);
     }
+}
+
+sleepKnob.addEventListener('click', handleSleepToggle);
+sleepKnob.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    handleSleepToggle();
 });
 
 initRadio();
