@@ -242,6 +242,22 @@ tuningKnob.addEventListener('input', (e) => {
     }
 });
 
+// Synchronizes mobile operating system lock screens natively with the hardware state
+function updateMediaSession(title, artist) {
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: title,
+            artist: artist,
+            album: 'Vintage OTR Simulator',
+            artwork: [
+                { src: 'radio-dial.png', sizes: '512x512', type: 'image/png' }
+            ]
+        });
+        navigator.mediaSession.setActionHandler('play', () => { if (!isPoweredOn) powerSwitch.click(); });
+        navigator.mediaSession.setActionHandler('pause', () => { if (isPoweredOn) powerSwitch.click(); });
+    }
+}
+
 // --- 3. The "Tuning" Engine ---
 function updateAudio(currentFreq) {
     if (!isPoweredOn) {
@@ -252,6 +268,7 @@ function updateAudio(currentFreq) {
         tunedIndicator.classList.remove('active');
         metadataRibbon.textContent = "POWER OFF";
         metadataRibbon.classList.add('off');
+        updateMediaSession("Power Off", "Skeuomorphic Radio");
         return;
     }
 
@@ -281,9 +298,12 @@ function updateAudio(currentFreq) {
         staticAudio.volume = (1 - signalStrength) * staticMaxVolume * smoothedVol;
 
         if (signalStrength > 0.7) {
-            metadataRibbon.textContent = stationAudioElements[activeStation.id].dataset.currentTrack || "BROADCASTING";
+            const track = stationAudioElements[activeStation.id].dataset.currentTrack || "BROADCASTING";
+            metadataRibbon.textContent = track;
+            updateMediaSession(track, activeStation.name);
         } else {
             metadataRibbon.textContent = "TUNING...";
+            updateMediaSession("Tuning Dial...", "Searching Frequencies...");
         }
 
         if (currentStationId !== activeStation.id) {
@@ -299,6 +319,7 @@ function updateAudio(currentFreq) {
     } else {
         staticAudio.volume = staticMaxVolume * smoothedVol * sleepAttenuation;
         metadataRibbon.textContent = "STATIC";
+        updateMediaSession("Static Hiss", "Dead Air");
         
         // Ensure eye aperture lies wide open through dead air
         if (magicEyeShadow) magicEyeShadow.style.setProperty('--shadow-angle', `100deg`);
