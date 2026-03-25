@@ -19,21 +19,22 @@
         <!-- Beautiful Decorative Grill -->
         <div class="speaker-grill"></div>
         
+        <!-- Magic Eye Tube Indicator -->
+        <div class="magic-eye-container" id="magic-eye">
+            <div class="magic-eye-glass">
+                <div class="magic-eye-phosphor"></div>
+                <div class="magic-eye-shadow" id="magic-eye-shadow"></div>
+                <div class="magic-eye-center"></div>
+            </div>
+        </div>
+        
         <!-- Turning Dial Core -->
         <div class="dial-section">
-            <div class="frequency-indicator">
-                <button class="fine-tune-btn" id="tune-down">◀</button>
-                <div class="freq-text-group">
-                    <span id="freq-readout">550</span> <span class="unit">kHz</span>
-                </div>
-                <button class="fine-tune-btn" id="tune-up">▶</button>
-            </div>
-            
             <div class="dial-wrapper">
                 <div id="css-dial">
                     <div class="dial-ridge"></div>
                     <div class="dial-center">
-                        <div class="dial-pointer" id="tuned-indicator"></div>
+                        <div class="dial-pointer"></div>
                     </div>
                 </div>
                 <!-- Native access layer -->
@@ -43,6 +44,14 @@
 
         <div class="metadata-container">
             <div id="metadata-ribbon" class="dymo-label off">POWER OFF</div>
+        </div>
+
+        <div class="frequency-indicator">
+            <button class="fine-tune-btn" id="tune-down">◀</button>
+            <div class="freq-text-group">
+                <span id="freq-readout">550</span> <span class="unit">kHz</span>
+            </div>
+            <button class="fine-tune-btn" id="tune-up">▶</button>
         </div>
 
         <!-- Utility row -->

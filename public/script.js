@@ -10,9 +10,9 @@ const volumeKnob = document.getElementById('volume-knob');
 const dialImage = document.getElementById('css-dial');
 const volDialImage = document.getElementById('css-vol-dial');
 const freqReadout = document.getElementById('freq-readout');
-const tunedIndicator = document.getElementById('tuned-indicator');
 const metadataRibbon = document.getElementById('metadata-ribbon');
 const staticAudio = document.getElementById('static-noise');
+const magicEyeShadow = document.getElementById('magic-eye-shadow');
 const presetBtns = document.querySelectorAll('.preset-btn');
 const tuneDownBtn = document.getElementById('tune-down');
 const tuneUpBtn = document.getElementById('tune-up');
@@ -281,20 +281,27 @@ function updateAudio(currentFreq) {
         staticAudio.volume = (1 - signalStrength) * staticMaxVolume * smoothedVol;
 
         if (signalStrength > 0.7) {
-            tunedIndicator.classList.add('active');
             metadataRibbon.textContent = stationAudioElements[activeStation.id].dataset.currentTrack || "BROADCASTING";
         } else {
-            tunedIndicator.classList.remove('active');
             metadataRibbon.textContent = "TUNING...";
         }
 
         if (currentStationId !== activeStation.id) {
             currentStationId = activeStation.id;
         }
+
+        // --- Magic Eye Tube Physics ---
+        // A squared organic decay curve so the wedge remains wide open until pinpoint locked, 
+        // aggressively snapping shut only in the final +/- 10kHz boundary.
+        const targetAngle = Math.max(2, 130 - (Math.pow(signalStrength, 3) * 128));
+        if (magicEyeShadow) magicEyeShadow.style.setProperty('--shadow-angle', `${targetAngle}deg`);
+
     } else {
-        staticAudio.volume = staticMaxVolume * smoothedVol;
-        tunedIndicator.classList.remove('active');
+        staticAudio.volume = staticMaxVolume * smoothedVol * sleepAttenuation;
         metadataRibbon.textContent = "STATIC";
+        
+        // Ensure eye aperture lies wide open through dead air
+        if (magicEyeShadow) magicEyeShadow.style.setProperty('--shadow-angle', `100deg`);
         currentStationId = null;
     }
 }
