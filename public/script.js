@@ -31,6 +31,7 @@ let sleepAttenuation = 1.0;
 
 // Dynamically target the host IP so LAN devices like phones can connect
 const API_BASE_URL = `http://${window.location.hostname}:3000`;
+const STREAM_API_URL = `http://${window.location.hostname}:3001`;
 
 let isPoweredOn = false;
 let runtimePresets = {};
@@ -49,7 +50,7 @@ async function initRadio() {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/stations`);
+        const response = await fetch(`${STREAM_API_URL}/api/stations`);
         stations = await response.json();
     } catch (err) {
         console.error("Could not load stations:", err);
@@ -111,8 +112,9 @@ function updateLightFlicker() {
         if (distance < shortest) shortest = distance;
     });
 
-    if (shortest < tuningRange) {
-        maxSignal = 1 - (shortest / tuningRange);
+    // Start responding visually slightly before the audio kicks in
+    if (shortest < (tuningRange * 1.5)) {
+        maxSignal = 1 - (shortest / (tuningRange * 1.5));
     }
 
     // Core baseline brightness scales with signal lock (0.6 minimum ambient glow)
@@ -181,47 +183,15 @@ function startAudioEngine() {
     staticAudio.play().catch(e => console.log("Static playback blocked:", e));
 
     stations.forEach(station => {
-        if (station.files && station.files.length > 0) {
-            const audioEl = new Audio();
-            audioEl.volume = 0;
-            audioEl.preload = 'auto';
-            document.body.appendChild(audioEl);
-            stationAudioElements[station.id] = audioEl;
+        const audioEl = new Audio();
+        audioEl.volume = 0;
+        audioEl.preload = 'none';
+        document.body.appendChild(audioEl);
+        stationAudioElements[station.id] = audioEl;
 
-            let lastShow = null;
-
-            // Queue engine to evenly distribute playback across subfolders
-            const queueNextTrack = () => {
-                // Get all unique shows, excluding the last one to prevent identical repeats
-                let availableShows = [...new Set(station.files.map(f => f.show))].filter(s => s !== lastShow);
-
-                if (availableShows.length === 0) {
-                    availableShows = [...new Set(station.files.map(f => f.show))];
-                }
-
-                if (availableShows.length > 0) {
-                    // Pick a random show folder uniquely
-                    const pickedShow = availableShows[Math.floor(Math.random() * availableShows.length)];
-                    lastShow = pickedShow;
-
-                    // Filter files for that exact show and pick a completely random track
-                    const showFiles = station.files.filter(f => f.show === pickedShow);
-                    const picked = showFiles[Math.floor(Math.random() * showFiles.length)];
-
-                    const displayName = picked.show === 'root' ? station.name : picked.show;
-                    audioEl.dataset.currentTrack = displayName.replace(/[-_]/g, ' ').toUpperCase();
-
-                    const encodedPath = picked.file.split('/').map(p => encodeURIComponent(p)).join('/');
-                    audioEl.src = `${API_BASE_URL}/audio/${encodeURIComponent(station.folderName)}/${encodedPath}`;
-                    audioEl.play().catch(e => console.log(`Playback of ${station.name} blocked:`, e));
-                }
-            };
-
-            audioEl.addEventListener('ended', queueNextTrack);
-            audioEl.addEventListener('error', queueNextTrack);
-
-            queueNextTrack();
-        }
+        // We no longer set .src or .play() here for all stations.
+        // The updateAudio engine will manage these dynamically.
+        audioEl.dataset.currentTrack = station.name.toUpperCase();
     });
 
     updateAudio(parseInt(tuningKnob.value));
@@ -294,7 +264,6 @@ function updateAudio(currentFreq) {
             audio.volume = 0;
         });
         staticAudio.volume = 0;
-        tunedIndicator.classList.remove('active');
         metadataRibbon.textContent = "POWER OFF";
         metadataRibbon.classList.add('off');
         updateMediaSession("Power Off", "Skeuomorphic Radio");
@@ -302,28 +271,69 @@ function updateAudio(currentFreq) {
     }
 
     metadataRibbon.classList.remove('off');
-
+    
     let activeStation = null;
-    let shortestDistance = tuningRange;
+    let shortestDistance = tuningRange * 2; // Increase buffer to match lazy-loading range
 
     stations.forEach(station => {
+        const audioEl = stationAudioElements[station.id];
+        if (!audioEl) return;
+
         const distance = Math.abs(currentFreq - station.frequency);
-        if (distance < shortestDistance) {
-            activeStation = station;
-            shortestDistance = distance;
+        const isActiveInRange = distance < (tuningRange * 2);
+
+        if (isActiveInRange) {
+            // Hot-swap src if it's missing or disconnected
+            if (!audioEl.src || audioEl.src === "" || audioEl.dataset.isStreaming !== "true") {
+                console.log(`[TUNER] Connecting to ${station.name}...`);
+                audioEl.crossOrigin = "anonymous";
+                audioEl.src = `${STREAM_API_URL}/stream/${station.id}`;
+                audioEl.play().catch(e => console.warn(`[TUNER] Start blocked for ${station.name}:`, e));
+                audioEl.dataset.isStreaming = "true";
+                
+                if (!audioEl.dataset.hasErrorListener) {
+                    audioEl.addEventListener('error', () => {
+                        console.error(`[TUNER] Stream error on ${station.name}`);
+                        audioEl.dataset.isStreaming = "false";
+                    });
+                    audioEl.dataset.hasErrorListener = "true";
+                }
+            }
+            
+            if (distance < shortestDistance) {
+                activeStation = station;
+                shortestDistance = distance;
+            }
+        } else {
+            // Unload distant streams
+            if (audioEl.dataset.isStreaming === "true") {
+                console.log(`[TUNER] Unloading ${station.name}`);
+                audioEl.pause();
+                audioEl.src = "";
+                audioEl.removeAttribute("src");
+                audioEl.load();
+                audioEl.dataset.isStreaming = "false";
+            }
+            audioEl.volume = 0;
         }
     });
 
-    Object.values(stationAudioElements).forEach(audio => {
-        audio.volume = 0;
-    });
-
-    const smoothedVol = Math.pow(masterVolume, 2) * sleepAttenuation;
+    const smoothedVol = Math.max(0, Math.pow(masterVolume, 2) * sleepAttenuation);
 
     if (activeStation && stationAudioElements[activeStation.id]) {
-        const signalStrength = 1 - (shortestDistance / tuningRange);
+        const signalStrength = Math.max(0, 1 - (shortestDistance / tuningRange));
+        const audioEl = stationAudioElements[activeStation.id];
 
-        stationAudioElements[activeStation.id].volume = Math.pow(signalStrength, 2) * smoothedVol;
+        // Apply volume safely
+        try {
+            const vol = Math.pow(signalStrength, 2) * smoothedVol;
+            if (!isNaN(vol)) {
+                audioEl.volume = Math.min(1.0, vol);
+            }
+        } catch (e) {
+            console.error("[TUNER] Volume Error:", e);
+        }
+        
         staticAudio.volume = (1 - signalStrength) * staticMaxVolume * smoothedVol;
 
         if (signalStrength > 0.7) {

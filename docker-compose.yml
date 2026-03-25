@@ -18,3 +18,14 @@ services:
     volumes:
       - ./public:/usr/share/nginx/html:ro
     restart: always
+
+  streaming_backend:
+    build: .
+    container_name: vintage-radio-streaming
+    command: node streaming-server.js
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: always

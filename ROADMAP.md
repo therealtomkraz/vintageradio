@@ -13,7 +13,7 @@ This document outlines the architectural and feature milestones planned to evolv
 
 ## Phase 3: Advanced Broadcast Logic
 - [ ] **Serialized Show Continuity**: Upgrade the backend API from stateless pseudo-random arrays to a stateful database layer. If a user listens to Part 1 of an episode, the engine will queue Part 2 sequentially the next night, picking up right where the story dropped off.
-- [ ] **Community Synchronization (True Live Broadcast)**: Migrate the backend to generate a universal Icecast or WebRTC stream. This forces every connected client (phones, desktops) to tune into the exact same synchronous audio point in real-time, recreating the communal experience of a live community transmission tower.
+- [x] **Community Synchronization (True Live Broadcast)**: Migrate the backend to generate a universal Icecast or WebRTC stream. This forces every connected client (phones, desktops) to tune into the exact same synchronous audio point in real-time. (Completed on `feature/streaming` branch).
 
 ## Phase 4: Android Porting
 - [ ] **Service Worker Audio Caching**: Configure standard Progressive Web App (PWA) service workers to silently buffer MP3 directories into local storage while on Wi-Fi, allowing the sleep radio to function on airplanes or in completely offline environments.
