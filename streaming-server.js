@@ -61,6 +61,7 @@ class Station {
         this.broadcastStream.setMaxListeners(0); // Prevent warnings from repeated piping
         this.clients = new Set();
         this.currentTrack = null;
+        this.currentFolder = folder; // Default to station folder
         this.currentTimemark = '00:00:00';
         this.frequency = 0; // Set after construction
 
@@ -76,20 +77,68 @@ class Station {
         });
     }
 
-    getAudioFiles(dir) {
-        let results = [];
+    getAudioFiles(stationDir) {
+        const groups = {}; // Map of subfolder names to arrays of files
         try {
-            const list = fs.readdirSync(dir);
-            for (const file of list) {
-                const fullPath = path.join(dir, file);
-                if (fs.lstatSync(fullPath).isDirectory()) {
-                    results = results.concat(this.getAudioFiles(fullPath));
-                } else if (file.endsWith('.mp3') || file.endsWith('.m4a')) {
-                    results.push(fullPath);
+            const items = fs.readdirSync(stationDir);
+            for (const item of items) {
+                const fullPath = path.join(stationDir, item);
+                const stats = fs.lstatSync(fullPath);
+                
+                if (stats.isDirectory()) {
+                    // Collect all files in this subfolder (e.g. "The Shadow")
+                    const subFiles = this.getAllFilesRecursive(fullPath);
+                    if (subFiles.length > 0) groups[item] = subFiles;
+                } else if (item.endsWith('.mp3') || item.endsWith('.m4a')) {
+                    // Files directly in the station folder
+                    if (!groups['root']) groups['root'] = [];
+                    groups['root'].push(fullPath);
                 }
             }
-        } catch(e) {}
+        } catch(e) {
+            console.error(`[STATION ${this.id}] Error reading dir: ${e.message}`);
+        }
+
+        return this.interleaveGroups(groups);
+    }
+
+    getAllFilesRecursive(dir) {
+        let results = [];
+        const list = fs.readdirSync(dir);
+        for (const file of list) {
+            const fullPath = path.join(dir, file);
+            if (fs.lstatSync(fullPath).isDirectory()) {
+                results = results.concat(this.getAllFilesRecursive(fullPath));
+            } else if (file.endsWith('.mp3') || file.endsWith('.m4a')) {
+                results.push(fullPath);
+            }
+        }
         return results;
+    }
+
+    interleaveGroups(groups) {
+        const interleaved = [];
+        const keys = Object.keys(groups);
+        if (keys.length === 0) return [];
+
+        // Continue until all files from all groups are used
+        let addedInRound = true;
+        let filePointers = {}; // Track index for each group
+        keys.forEach(k => filePointers[k] = 0);
+
+        while (addedInRound) {
+            addedInRound = false;
+            for (const key of keys) {
+                const groupFiles = groups[key];
+                const ptr = filePointers[key];
+                if (ptr < groupFiles.length) {
+                    interleaved.push(groupFiles[ptr]);
+                    filePointers[key]++;
+                    addedInRound = true;
+                }
+            }
+        }
+        return interleaved;
     }
 
     start() {
@@ -105,6 +154,11 @@ class Station {
     playNext(index) {
         const file = this.files[index % this.files.length];
         this.currentTrack = path.basename(file);
+        
+        // Get the parent folder name (e.g. "The Shadow" inside "Comedy")
+        const parentPath = path.dirname(file);
+        this.currentFolder = path.basename(parentPath);
+        
         this.currentTimemark = '00:00:00'; // Reset clock for new track
         // Trigger a global status update for the logs
         printStationStatus();
@@ -163,10 +217,10 @@ function initializeStations() {
     let folders = fs.readdirSync(STATIONS_DIR)
         .filter(f => fs.lstatSync(path.join(STATIONS_DIR, f)).isDirectory());
 
-    // Shuffle and limit to 10 stations as per the original server.js
+    // Shuffle and limit to 13 stations
     folders = folders.sort(() => 0.5 - Math.random());
-    if (folders.length > 10) {
-        folders = folders.slice(0, 10);
+    if (folders.length > 13) {
+        folders = folders.slice(0, 13);
     }
 
     folders.forEach((folder, index) => {
@@ -248,6 +302,7 @@ app.get('/api/stations', (req, res) => {
         id: s.id,
         name: s.name,
         folderName: s.folder,
+        currentFolder: s.currentFolder,
         frequency: s.frequency, 
         currentTrack: s.currentTrack,
         listeners: s.clients.size

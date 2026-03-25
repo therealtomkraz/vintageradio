@@ -59,6 +59,17 @@ async function initRadio() {
     tuningKnob.dispatchEvent(new Event('input'));
     volumeKnob.dispatchEvent(new Event('input'));
 
+    // Refresh metadata periodically to sync track names
+    setInterval(async () => {
+        try {
+            const response = await fetch(`${STREAM_API_URL}/api/stations`);
+            stations = await response.json();
+            if (isPoweredOn) updateAudio(parseInt(tuningKnob.value));
+        } catch (err) {
+            console.warn("Metadata sync failed:", err);
+        }
+    }, 15000);
+
     // Register Service Worker for PWA support
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
@@ -337,7 +348,9 @@ function updateAudio(currentFreq) {
         staticAudio.volume = (1 - signalStrength) * staticMaxVolume * smoothedVol;
 
         if (signalStrength > 0.7) {
-            const track = stationAudioElements[activeStation.id].dataset.currentTrack || "BROADCASTING";
+            // Use the live folder name (the Show) for the ribbon, falling back to station name
+            const currentFolder = activeStation.currentFolder || activeStation.folderName || activeStation.name;
+            const track = currentFolder.replace(/-/g, ' ').toUpperCase();
             metadataRibbon.textContent = track;
             updateMediaSession(track, activeStation.name);
         } else {

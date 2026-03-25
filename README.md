@@ -68,9 +68,9 @@ The streaming backend runs on port `3001` and provides the following endpoints:
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
-| `/api/stations` | `GET` | Returns metadata for all 10 active stations (ID, Name, Frequency, Current Track). |
-| `/stream/:id` | `GET` | Connects to the live, synchronized audio stream for the specified station ID. |
-| `/api/status` | `GET` | Returns global server health, total station count, and total connected listeners. |
+| `/api/stations` | `GET` | Returns metadata for all 13 active stations. |
+| `/stream/0` | `GET` | Connects to the live audio stream for the station ID (e.g. `0`, `1`, `2`). |
+| `/api/status` | `GET` | Returns global server health and total connected listeners. |
 
 ### 3. Monitoring & "Control Room" Logs
 The streaming server provides real-time visibility into the "on-air" status. Whenever a track changes, a full report is printed to the Docker logs:
