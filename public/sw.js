@@ -2,8 +2,8 @@ const CACHE_NAME = 'vintage-radio-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/style.css?v=2',
-  '/script.js?v=2',
+  '/style.css',
+  '/script.js',
   '/manifest.json',
   '/radio-dial.png',
   '/radio-bg.png',
