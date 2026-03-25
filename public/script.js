@@ -57,6 +57,13 @@ async function initRadio() {
 
     tuningKnob.dispatchEvent(new Event('input'));
     volumeKnob.dispatchEvent(new Event('input'));
+
+    // Register Service Worker for PWA support
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('SW Registered', reg))
+            .catch(err => console.log('SW Failed', err));
+    }
 }
 
 // A function to play a satisfying mechanical click using Web Audio API
@@ -121,6 +128,26 @@ function updateLightFlicker() {
     updateLightFrame = requestAnimationFrame(updateLightFlicker);
 }
 
+let wakeLock = null;
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake Lock Active');
+        }
+    } catch (err) {
+        console.error(`${err.name}, ${err.message}`);
+    }
+}
+
+function releaseWakeLock() {
+    if (wakeLock !== null) {
+        wakeLock.release();
+        wakeLock = null;
+        console.log('Wake Lock Released');
+    }
+}
+
 powerSwitch.addEventListener('click', () => {
     playClickSound();
     isPoweredOn = !isPoweredOn;
@@ -128,6 +155,7 @@ powerSwitch.addEventListener('click', () => {
     if (isPoweredOn) {
         radioContainer.classList.add('power-on');
         updateLightFrame = requestAnimationFrame(updateLightFlicker);
+        requestWakeLock();
         if (!hasInteracted) {
             // Jump instantly to a completely random live station on the first power-on
             if (stations.length > 0) {
@@ -143,6 +171,7 @@ powerSwitch.addEventListener('click', () => {
         radioContainer.classList.remove('power-on');
         cancelAnimationFrame(updateLightFrame);
         document.body.classList.remove('power-on');
+        releaseWakeLock();
         updateAudio(parseInt(tuningKnob.value));
     }
 });
