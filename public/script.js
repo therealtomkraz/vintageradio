@@ -304,8 +304,14 @@ function updateAudio(currentFreq) {
                 
                 if (!audioEl.dataset.hasErrorListener) {
                     audioEl.addEventListener('error', () => {
-                        console.error(`[TUNER] Stream error on ${station.name}`);
+                        console.error(`[TUNER] Stream error on ${station.name} (${station.frequency}kHz)`);
                         audioEl.dataset.isStreaming = "false";
+                    });
+                    audioEl.addEventListener('stalled', () => {
+                        console.warn(`[TUNER] Stream stalled on ${station.name}. ReadyState: ${audioEl.readyState}`);
+                    });
+                    audioEl.addEventListener('waiting', () => {
+                        console.log(`[TUNER] Stream waiting for data on ${station.name}`);
                     });
                     audioEl.dataset.hasErrorListener = "true";
                 }
