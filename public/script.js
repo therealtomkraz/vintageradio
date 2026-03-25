@@ -306,7 +306,62 @@ function updateAudio(currentFreq) {
     }
 }
 
-// --- 4. Presets Logic ---
+// --- 4. Smooth Dial Dragging Physics ---
+const dialWrapper = document.querySelector('.dial-wrapper');
+let isDraggingDial = false;
+let previousX = 0;
+let currentDialFloat = parseFloat(tuningKnob.value); // Float layer for high-resolution micro-tuning precision
+
+function handleDialStart(clientX) {
+    if (!isPoweredOn) return;
+    isDraggingDial = true;
+    previousX = clientX;
+}
+
+function handleDialMove(clientX) {
+    if (!isDraggingDial) return;
+    
+    const deltaX = clientX - previousX;
+    previousX = clientX;
+    
+    // GEAR REDUCTION RATIO: 1 pixel of hardware finger drag now physically equals just 2.0 kHz.
+    // The previous native HTML range scaled linearly at ~11.5 kHz per pixel!
+    // This dramatically slows down tuning, making classic fine-tuning beautifully responsive and accurate.
+    currentDialFloat += deltaX * 2.0; 
+    
+    // Restrict to absolute station boundaries natively
+    currentDialFloat = Math.max(550, Math.min(2500, currentDialFloat));
+    
+    const rounded = Math.round(currentDialFloat);
+    if (tuningKnob.value != rounded) {
+        tuningKnob.value = rounded;
+        tuningKnob.dispatchEvent(new Event('input'));
+    }
+}
+
+function handleDialEnd() {
+    isDraggingDial = false;
+}
+
+dialWrapper.addEventListener('mousedown', (e) => handleDialStart(e.clientX));
+window.addEventListener('mousemove', (e) => handleDialMove(e.clientX));
+window.addEventListener('mouseup', handleDialEnd);
+
+dialWrapper.addEventListener('touchstart', (e) => {
+    handleDialStart(e.touches[0].clientX);
+}, {passive: true});
+
+window.addEventListener('touchmove', (e) => {
+    if (isDraggingDial) {
+        e.preventDefault(); // Stop mobile phone screen sliding during physical dial tuning
+        handleDialMove(e.touches[0].clientX);
+    }
+}, {passive: false});
+
+window.addEventListener('touchend', handleDialEnd);
+
+
+// --- 5. Presets Logic ---
 presetBtns.forEach(btn => {
     const slot = btn.dataset.slot;
 
