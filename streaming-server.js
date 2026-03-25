@@ -65,16 +65,27 @@ class Station {
         this.currentTimemark = '00:00:00';
         this.frequency = 0; // Set after construction
 
-        // Fan-out mechanism
+        // Fan-out mechanism with backpressure protection
         this.broadcastStream.on('data', (chunk) => {
+            if (this.clients.size === 0) return; // Drop data if no listeners
+            
             this.clients.forEach(client => {
                 try {
-                    client.write(chunk);
+                    // If client buffer is full, drop them to prevent station-wide lag
+                    const canWrite = client.write(chunk);
+                    if (!canWrite) {
+                        console.warn(`[STATION ${this.id}] Dropping slow client (backpressure)`);
+                        client.destroy();
+                        this.clients.delete(client);
+                    }
                 } catch (e) {
                     this.clients.delete(client);
                 }
             });
         });
+
+        // Data Sink: Keeps FFmpeg moving even when no one is listening
+        this.broadcastStream.resume();
     }
 
     getAudioFiles(stationDir) {

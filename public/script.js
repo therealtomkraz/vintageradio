@@ -271,21 +271,81 @@ function updateMediaSession(title, artist) {
 // --- 3. The "Tuning" Engine ---
 function updateAudio(currentFreq) {
     if (!isPoweredOn) {
+        if (window.tuningTimeout) clearTimeout(window.tuningTimeout);
         Object.values(stationAudioElements).forEach(audio => {
             audio.volume = 0;
+            if (audio.dataset.isStreaming === "true") {
+                audio.pause();
+                audio.src = "";
+                audio.load();
+                audio.dataset.isStreaming = "false";
+            }
         });
         staticAudio.volume = 0;
         metadataRibbon.textContent = "POWER OFF";
         metadataRibbon.classList.add('off');
-        updateMediaSession("Power Off", "Skeuomorphic Radio");
         return;
     }
 
     metadataRibbon.classList.remove('off');
     
     let activeStation = null;
-    let shortestDistance = tuningRange * 2; // Increase buffer to match lazy-loading range
+    let shortestDistance = tuningRange * 2; 
 
+    stations.forEach(station => {
+        const distance = Math.abs(currentFreq - station.frequency);
+        if (distance < shortestDistance) {
+            activeStation = station;
+            shortestDistance = distance;
+        }
+    });
+
+    if (window.tuningTimeout) clearTimeout(window.tuningTimeout);
+    window.tuningTimeout = setTimeout(() => {
+        performActualTuning(currentFreq, activeStation, shortestDistance);
+    }, 150);
+
+    updateVolumeAndStatic(shortestDistance, activeStation);
+
+    if (activeStation && shortestDistance < tuningRange) {
+        const signalStrength = Math.max(0, 1 - (shortestDistance / tuningRange));
+        if (signalStrength > 0.7) {
+            const currentFolder = activeStation.currentFolder || activeStation.folderName || activeStation.name;
+            const track = currentFolder.replace(/-/g, ' ').toUpperCase();
+            metadataRibbon.textContent = track;
+            updateMediaSession(track, activeStation.name);
+        } else {
+            metadataRibbon.textContent = "TUNING...";
+        }
+        
+        const targetAngle = Math.max(2, 130 - (Math.pow(signalStrength, 3) * 128));
+        if (magicEyeShadow) magicEyeShadow.style.setProperty('--shadow-angle', `${targetAngle}deg`);
+        currentStationId = activeStation.id;
+    } else {
+        metadataRibbon.textContent = "STATIC";
+        if (magicEyeShadow) magicEyeShadow.style.setProperty('--shadow-angle', `100deg`);
+        currentStationId = null;
+    }
+}
+
+function updateVolumeAndStatic(shortestDistance, activeStation) {
+    const smoothedVol = Math.max(0, Math.pow(masterVolume, 2) * sleepAttenuation);
+    let signalStrength = 0;
+
+    if (activeStation) {
+        signalStrength = Math.max(0, 1 - (shortestDistance / tuningRange));
+        const audioEl = stationAudioElements[activeStation.id];
+        if (audioEl && audioEl.dataset.isStreaming === "true") {
+            try {
+                const vol = Math.pow(signalStrength, 2) * smoothedVol;
+                if (!isNaN(vol)) audioEl.volume = Math.min(1.0, vol);
+            } catch (e) {}
+        }
+    }
+    staticAudio.volume = (1 - signalStrength) * staticMaxVolume * smoothedVol;
+}
+
+function performActualTuning(currentFreq, activeStation, shortestDistance) {
     stations.forEach(station => {
         const audioEl = stationAudioElements[station.id];
         if (!audioEl) return;
@@ -294,37 +354,27 @@ function updateAudio(currentFreq) {
         const isActiveInRange = distance < (tuningRange * 2);
 
         if (isActiveInRange) {
-            // Hot-swap src if it's missing or disconnected
             if (!audioEl.src || audioEl.src === "" || audioEl.dataset.isStreaming !== "true") {
-                console.log(`[TUNER] Connecting to ${station.name}...`);
                 audioEl.crossOrigin = "anonymous";
+                audioEl.preload = "none";
                 audioEl.src = `${STREAM_API_URL}/stream/${station.id}`;
-                audioEl.play().catch(e => console.warn(`[TUNER] Start blocked for ${station.name}:`, e));
+                audioEl.play().catch(e => {
+                    if (e.name !== 'AbortError') console.warn(`[TUNER] Play failed:`, e);
+                });
                 audioEl.dataset.isStreaming = "true";
                 
                 if (!audioEl.dataset.hasErrorListener) {
                     audioEl.addEventListener('error', () => {
-                        console.error(`[TUNER] Stream error on ${station.name} (${station.frequency}kHz)`);
                         audioEl.dataset.isStreaming = "false";
                     });
                     audioEl.addEventListener('stalled', () => {
-                        console.warn(`[TUNER] Stream stalled on ${station.name}. ReadyState: ${audioEl.readyState}`);
-                    });
-                    audioEl.addEventListener('waiting', () => {
-                        console.log(`[TUNER] Stream waiting for data on ${station.name}`);
+                        if (audioEl.dataset.isStreaming === "true") audioEl.load();
                     });
                     audioEl.dataset.hasErrorListener = "true";
                 }
             }
-            
-            if (distance < shortestDistance) {
-                activeStation = station;
-                shortestDistance = distance;
-            }
         } else {
-            // Unload distant streams
             if (audioEl.dataset.isStreaming === "true") {
-                console.log(`[TUNER] Unloading ${station.name}`);
                 audioEl.pause();
                 audioEl.src = "";
                 audioEl.removeAttribute("src");
@@ -334,62 +384,13 @@ function updateAudio(currentFreq) {
             audioEl.volume = 0;
         }
     });
-
-    const smoothedVol = Math.max(0, Math.pow(masterVolume, 2) * sleepAttenuation);
-
-    if (activeStation && stationAudioElements[activeStation.id]) {
-        const signalStrength = Math.max(0, 1 - (shortestDistance / tuningRange));
-        const audioEl = stationAudioElements[activeStation.id];
-
-        // Apply volume safely
-        try {
-            const vol = Math.pow(signalStrength, 2) * smoothedVol;
-            if (!isNaN(vol)) {
-                audioEl.volume = Math.min(1.0, vol);
-            }
-        } catch (e) {
-            console.error("[TUNER] Volume Error:", e);
-        }
-        
-        staticAudio.volume = (1 - signalStrength) * staticMaxVolume * smoothedVol;
-
-        if (signalStrength > 0.7) {
-            // Use the live folder name (the Show) for the ribbon, falling back to station name
-            const currentFolder = activeStation.currentFolder || activeStation.folderName || activeStation.name;
-            const track = currentFolder.replace(/-/g, ' ').toUpperCase();
-            metadataRibbon.textContent = track;
-            updateMediaSession(track, activeStation.name);
-        } else {
-            metadataRibbon.textContent = "TUNING...";
-            updateMediaSession("Tuning Dial...", "Searching Frequencies...");
-        }
-
-        if (currentStationId !== activeStation.id) {
-            currentStationId = activeStation.id;
-        }
-
-        // --- Magic Eye Tube Physics ---
-        // A squared organic decay curve so the wedge remains wide open until pinpoint locked, 
-        // aggressively snapping shut only in the final +/- 10kHz boundary.
-        const targetAngle = Math.max(2, 130 - (Math.pow(signalStrength, 3) * 128));
-        if (magicEyeShadow) magicEyeShadow.style.setProperty('--shadow-angle', `${targetAngle}deg`);
-
-    } else {
-        staticAudio.volume = staticMaxVolume * smoothedVol * sleepAttenuation;
-        metadataRibbon.textContent = "STATIC";
-        updateMediaSession("Static Hiss", "Dead Air");
-        
-        // Ensure eye aperture lies wide open through dead air
-        if (magicEyeShadow) magicEyeShadow.style.setProperty('--shadow-angle', `100deg`);
-        currentStationId = null;
-    }
 }
 
 // --- 4. Smooth Dial Dragging Physics ---
 const dialWrapper = document.querySelector('.dial-wrapper');
 let isDraggingDial = false;
 let previousX = 0;
-let currentDialFloat = parseFloat(tuningKnob.value); // Float layer for high-resolution micro-tuning precision
+let currentDialFloat = parseFloat(tuningKnob.value); 
 
 function handleDialStart(clientX) {
     if (!isPoweredOn) return;
@@ -399,18 +400,10 @@ function handleDialStart(clientX) {
 
 function handleDialMove(clientX) {
     if (!isDraggingDial) return;
-    
     const deltaX = clientX - previousX;
     previousX = clientX;
-    
-    // GEAR REDUCTION RATIO: 1 pixel of hardware finger drag now physically equals just 2.0 kHz.
-    // The previous native HTML range scaled linearly at ~11.5 kHz per pixel!
-    // This dramatically slows down tuning, making classic fine-tuning beautifully responsive and accurate.
     currentDialFloat += deltaX * 2.0; 
-    
-    // Restrict to absolute station boundaries natively
     currentDialFloat = Math.max(550, Math.min(2500, currentDialFloat));
-    
     const rounded = Math.round(currentDialFloat);
     if (tuningKnob.value != rounded) {
         tuningKnob.value = rounded;
@@ -432,25 +425,23 @@ dialWrapper.addEventListener('touchstart', (e) => {
 
 window.addEventListener('touchmove', (e) => {
     if (isDraggingDial) {
-        e.preventDefault(); // Stop mobile phone screen sliding during physical dial tuning
+        e.preventDefault(); 
         handleDialMove(e.touches[0].clientX);
     }
 }, {passive: false});
 
 window.addEventListener('touchend', handleDialEnd);
 
-
 // --- 5. Presets Logic ---
 presetBtns.forEach(btn => {
     const slot = btn.dataset.slot;
-
     let pressTimer;
 
     const savePreset = () => {
         const freqToSave = tuningKnob.value;
         runtimePresets[slot] = freqToSave;
         btn.classList.add('saved');
-
+        
         freqReadout.style.color = '#fff';
         freqReadout.style.textShadow = '0 0 20px #fff';
         setTimeout(() => {
@@ -481,7 +472,7 @@ presetBtns.forEach(btn => {
             }
         }
     };
-
+    
     const handleLeave = () => {
         btn.classList.remove('pressing');
         if (pressTimer) {
@@ -503,9 +494,9 @@ if (clearPresetsBtn) {
         presetBtns.forEach(btn => btn.classList.remove('saved'));
     });
 }
-// --- Sleep Timer Engine ---
+
 function handleSleepToggle() {
-    playClickSound(); // Mechanical tick
+    playClickSound();
     sleepStateIdx = (sleepStateIdx + 1) % sleepOptions.length;
     sleepKnob.className = `sleep-knob sleep-pos-${sleepStateIdx}`;
     const mins = sleepOptions[sleepStateIdx];
@@ -525,25 +516,19 @@ function handleSleepToggle() {
             }
             const remainingMs = sleepEndTime - Date.now();
             if (remainingMs <= 0) {
-                // Time up – shut down
                 clearInterval(sleepInterval);
                 sleepAttenuation = 1.0;
                 if (isPoweredOn) powerSwitch.click();
-                // Reset UI
                 sleepStateIdx = 0;
                 sleepKnob.className = `sleep-knob sleep-pos-0`;
                 sleepLabel.textContent = "SLEEP: OFF";
             } else if (remainingMs < 60000) {
-                // Final minute fade out
                 sleepAttenuation = remainingMs / 60000;
                 updateAudio(parseInt(tuningKnob.value));
-            } else {
-                sleepAttenuation = 1.0;
             }
         }, 1000);
     }
 }
-
 sleepKnob.addEventListener('click', handleSleepToggle);
 sleepKnob.addEventListener('touchstart', (e) => {
     e.preventDefault();
