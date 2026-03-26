@@ -351,7 +351,7 @@ function performActualTuning(currentFreq, activeStation, shortestDistance) {
         if (!audioEl) return;
 
         const distance = Math.abs(currentFreq - station.frequency);
-        const isActiveInRange = distance < (tuningRange * 2);
+        const isActiveInRange = distance < (tuningRange * 1.2);
 
         if (isActiveInRange) {
             if (!audioEl.src || audioEl.src === "" || audioEl.dataset.isStreaming !== "true") {
@@ -365,11 +365,11 @@ function performActualTuning(currentFreq, activeStation, shortestDistance) {
                 
                 if (!audioEl.dataset.hasErrorListener) {
                     audioEl.addEventListener('error', () => {
+                        console.warn(`[STREAM] Connection error for station ${station.id}. Retrying...`);
                         audioEl.dataset.isStreaming = "false";
+                        // The next tuning pulse will attempt a clean reconnect
                     });
-                    audioEl.addEventListener('stalled', () => {
-                        if (audioEl.dataset.isStreaming === "true") audioEl.load();
-                    });
+                    // Removed the 'stalled' listener as it causes 'canceled' request loops
                     audioEl.dataset.hasErrorListener = "true";
                 }
             }
