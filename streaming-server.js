@@ -168,7 +168,6 @@ class Station {
             .audioBitrate('128k')
             .audioChannels(2)
             .audioFrequency(44100)
-            .audioFilters('dynaudnorm=p=0.9:s=5')
             .on('progress', (p) => { this.currentTimemark = p.timemark; })
             .on('end', () => { this.playNext(); })
             .on('error', (err) => {
