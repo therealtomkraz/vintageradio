@@ -9,3 +9,6 @@ node_modules/
 # Ignore OS metadata
 .DS_Store
 Thumbs.db
+
+# Ignore persistent playback state
+station-state.json
