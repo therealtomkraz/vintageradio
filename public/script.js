@@ -173,7 +173,9 @@ powerSwitch.addEventListener('click', () => {
             // Jump instantly to a completely random live station on the first power-on
             if (stations.length > 0) {
                 const randomStation = stations[Math.floor(Math.random() * stations.length)];
-                tuningKnob.value = randomStation.frequency;
+                targetDialFloat = randomStation.frequency;
+                currentDialFloat = targetDialFloat;
+                tuningKnob.value = targetDialFloat;
                 tuningKnob.dispatchEvent(new Event('input')); 
             }
             startAudioEngine();
@@ -209,14 +211,12 @@ function startAudioEngine() {
 }
 
 // --- 2. Input Handling ---
-const adjustTuning = (amount) => {
-    let currentVal = parseInt(tuningKnob.value);
-    let newVal = currentVal + amount;
-    if (newVal < minFreq) newVal = minFreq;
-    if (newVal > maxFreq) newVal = maxFreq;
+let targetDialFloat = parseFloat(tuningKnob.value);
+let currentDialFloat = targetDialFloat;
 
-    tuningKnob.value = newVal;
-    tuningKnob.dispatchEvent(new Event('input'));
+const adjustTuning = (amount) => {
+    targetDialFloat += amount;
+    targetDialFloat = Math.max(minFreq, Math.min(maxFreq, targetDialFloat));
 };
 
 tuneDownBtn.addEventListener('click', () => adjustTuning(-1));
@@ -390,26 +390,54 @@ function performActualTuning(currentFreq, activeStation, shortestDistance) {
 const dialWrapper = document.querySelector('.dial-wrapper');
 let isDraggingDial = false;
 let previousX = 0;
-let currentDialFloat = parseFloat(tuningKnob.value); 
 
 function handleDialStart(clientX) {
     if (!isPoweredOn) return;
     isDraggingDial = true;
     previousX = clientX;
+    // Set target to current precisely to avoid jumps
+    targetDialFloat = currentDialFloat;
 }
 
 function handleDialMove(clientX) {
     if (!isDraggingDial) return;
     const deltaX = clientX - previousX;
     previousX = clientX;
-    currentDialFloat += deltaX * 2.0; 
-    currentDialFloat = Math.max(550, Math.min(2500, currentDialFloat));
-    const rounded = Math.round(currentDialFloat);
-    if (tuningKnob.value != rounded) {
-        tuningKnob.value = rounded;
-        tuningKnob.dispatchEvent(new Event('input'));
-    }
+    
+    // Move the target at a high gear ratio
+    targetDialFloat += deltaX * 2.5; 
+    targetDialFloat = Math.max(minFreq, Math.min(maxFreq, targetDialFloat));
 }
+
+// PHYSICS CORE: This animation loop pulls the current dial towards the target 
+// at a limited speed (inertia) to prevent the audio from stalling.
+function updateTuningPhysics() {
+    const diff = targetDialFloat - currentDialFloat;
+    const absDiff = Math.abs(diff);
+    
+    if (absDiff > 0.1) {
+        // VELOCITY LIMIT: Cannot rotate more than 18kHz per frame
+        // This stops "Connection Storms" even if the user swiped across the whole dial.
+        const maxSpeed = 18;
+        // DAMPING: Decelerate as we arrive
+        const damping = 0.25; 
+        const move = Math.sign(diff) * Math.min(absDiff * damping, maxSpeed);
+        
+        currentDialFloat += move;
+        
+        // Push the physics result back into the actual knob for the tuning engine
+        const rounded = Math.round(currentDialFloat);
+        if (tuningKnob.value != rounded) {
+            tuningKnob.value = rounded;
+            tuningKnob.dispatchEvent(new Event('input'));
+        }
+    }
+    
+    requestAnimationFrame(updateTuningPhysics);
+}
+
+// Initialize the physics loop
+requestAnimationFrame(updateTuningPhysics);
 
 function handleDialEnd() {
     isDraggingDial = false;
@@ -467,8 +495,7 @@ presetBtns.forEach(btn => {
             pressTimer = null;
             const sf = runtimePresets[slot];
             if (sf) {
-                tuningKnob.value = sf;
-                tuningKnob.dispatchEvent(new Event('input'));
+                targetDialFloat = parseFloat(sf);
             }
         }
     };
